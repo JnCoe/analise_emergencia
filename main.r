@@ -21,6 +21,8 @@ casos <- data.table::fread("HIST_PAINEL_COVIDBR_13ago2020.csv", colClasses = c("
 ibge <- data.table::fread("IBGE.csv", encoding="UTF-8", colClasses=c("Código do Município"="character"))
 pop <- data.table::fread("populacao.csv", encoding="UTF-8", colClasses=c("Cód."="character"))
 empenho <- data.table::fread("info_empenhos.csv", encoding="UTF-8", colClasses=c("id_orgao"="character","cnpj_cpf"="character"))
+similares <- data.table::fread("itens_similares_covid.csv", encoding="UTF-8")
+
 
 # Limpar variáveis
 ibge <- janitor::clean_names(ibge)
@@ -194,15 +196,15 @@ n_distinct(item_contrato$id_licitacao)
 sum(item_contrato$vl_item_contrato)
 n_distinct(empenho$cnpj_cpf)
 
+# Filtrar similares
+similares_filtrado <- similares %>%
+  filter(similaridade >= 0.6 & vl_item_pesq != 0)
 
+# Criar novas variáveis similares
+similares_filtrado <- similares_filtrado %>%
+  mutate(dif_preco = (vl_item_pesq-mediana_no_estado)/mediana_no_estado)
 
-
-## Sandbox
-
-empenho %>%
-  select()
-
-contrato <- data.table::fread("info_contrato.csv", encoding="UTF-8", colClasses=c("id_orgao"="character", "cd_municipio_ibge" = "character"))
-
-
-head(arrange(select(soma_mun_item_contr,nome_do_municipio, soma_vl_item_contrato, valor_sobre_pop, valor_sobre_casos, lic_concluidas),desc(valor_sobre_casos)), n = 10)
+# Filtrar maiores discrepâncias
+head(arrange(similares_filtrado,desc(dif_preco)), n = 50) %>%
+  kable(align="l", format.args = list(big.mark = ","), digits=2) %>%
+  kable_styling(bootstrap_options = c("striped"), position = "center")
