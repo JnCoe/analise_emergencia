@@ -17,7 +17,7 @@ item_contrato <- data.table::fread("info_item_contrato_novo.csv", encoding="UTF-
 info_contrato <- data.table::fread("info_contrato.csv", encoding="UTF-8", colClasses=c("id_orgao"="character"))
 item_licitacao <- data.table::fread("info_item_licitacao.csv", encoding="UTF-8", colClasses=c("id_orgao"="character"))
 orgaos <- data.table::fread("d8ag0132l0g7r7_public_orgao.csv", encoding="UTF-8", colClasses=c("id_orgao"="character", "cd_municipio_ibge" = "character"))
-casos <- data.table::fread("HIST_PAINEL_COVIDBR_13ago2020.csv", colClasses = c("codmun" = "character"))
+casos <- data.table::fread("HIST_PAINEL_COVIDBR_13ago2020.csv", encoding="UTF-8", colClasses = c("codmun" = "character"))
 ibge <- data.table::fread("IBGE.csv", encoding="UTF-8", colClasses=c("Código do Município"="character"))
 pop <- data.table::fread("populacao.csv", encoding="UTF-8", colClasses=c("Cód."="character"))
 empenho <- data.table::fread("info_empenhos.csv", encoding="UTF-8", colClasses=c("id_orgao"="character","cnpj_cpf"="character"))
@@ -31,7 +31,8 @@ pop <- janitor::clean_names(pop)
 casos <- janitor::clean_names(casos)
 
 # Filtrar apenas valores máximos de casos e óbitos
-max_casos <- casos %>% group_by(codmun) %>% top_n(1, casos_acumulado)
+casos <- casos %>% mutate(data = as.Date(data, format="%d/%m/%Y"))
+max_casos <- casos %>% group_by(codmun) %>% top_n(1, data)
 
 # Filtrar apenas dados de 2017 do IBGE
 ibge <- filter(ibge, ano == 2017)
