@@ -37,3 +37,9 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+
+Dados
+outputtrimado.txt
+.RData
+backup.RData
+itens_similares_covid.xls
