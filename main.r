@@ -31,19 +31,19 @@ cnpjs_2019 <- data.table::fread("Dados/filtro2019.txt", encoding="UTF-8", colCla
 # Corrigir tabela cnpjs novos
 cnpjs_2019 <- cnpjs_2019[, c(1:40)]
 
-# Contratos 2018 e 2019 (não é necessário para demais análises)
-contr_2018 <- data.table::fread("contrato_2018.csv", encoding="UTF-8", colClasses=c("NR_DOCUMENTO"="character"))
-contr_2019 <- data.table::fread("contrato_2019.csv", encoding="UTF-8", colClasses=c("NR_DOCUMENTO"="character"))
-
-contrs_1819 <- rbind(contr_2018, contr_2019) %>%
-  group_by(NR_DOCUMENTO,CD_ORGAO) %>%
-  summarize(contratos = n()) %>%
-  group_by(NR_DOCUMENTO) %>%
-  summarize(contratos = sum(contratos), contratantes = n())
-
-  
-rm(contr_2018)
-rm(contr_2019)
+##### Contratos 2018 e 2019 (não é necessário para demais análises)
+# contr_2018 <- data.table::fread("contrato_2018.csv", encoding="UTF-8", colClasses=c("NR_DOCUMENTO"="character"))
+# contr_2019 <- data.table::fread("contrato_2019.csv", encoding="UTF-8", colClasses=c("NR_DOCUMENTO"="character"))
+# 
+# contrs_1819 <- rbind(contr_2018, contr_2019) %>%
+#   group_by(NR_DOCUMENTO,CD_ORGAO) %>%
+#   summarize(contratos = n()) %>%
+#   group_by(NR_DOCUMENTO) %>%
+#   summarize(contratos = sum(contratos), contratantes = n())
+# 
+#   
+# rm(contr_2018)
+# rm(contr_2019)
 
 # Limpar variáveis
 ibge <- janitor::clean_names(ibge)
@@ -54,7 +54,7 @@ cnpjs <- janitor::clean_names(cnpjs)
 aventais <- janitor::clean_names(aventais)
 
 # Filtrar apenas valores máximos de casos e óbitos
-casos <- casos %>% mutate(data = as.Date(data, format="%d/%m/%Y"))
+casos <- casos %>% mutate(data = as.Date(data, format="%Y-%m-%d"))
 max_casos <- casos %>% group_by(codmun) %>% top_n(1, data)
 
 # Filtrar apenas dados de 2017 do IBGE
@@ -214,34 +214,34 @@ medianas <- similares_filtrado %>%
   unique()
   
 
-itens_mais_comprados <-  %>%
-  filter(!(flag_servico==1)) %>%
-  mutate(ds_1 = tolower(iconv(ds_1, from="UTF-8", to="ASCII//TRANSLIT"))) %>%
-  group_by(ds_1) %>%
-  summarize(aquisicoes = n_distinct(id_licitacao), total_comprado = sum(qt_itens_contrato), total_valor_comprado = sum(vl_total_item_contrato)) %>%
-  left_join(medianas, by=c("ds_1" = "ds_1_item_pesq"))
+#####itens_mais_comprados <-  %>%
+#  filter(!(flag_servico==1)) %>%
+#  mutate(ds_1 = tolower(iconv(ds_1, from="UTF-8", to="ASCII//TRANSLIT"))) %>%
+#  group_by(ds_1) %>%
+#  summarize(aquisicoes = n_distinct(id_licitacao), total_comprado = sum(qt_itens_contrato), total_valor_comprado = sum(vl_total_item_contrato)) %>%
+#  left_join(medianas, by=c("ds_1" = "ds_1_item_pesq"))
 
 
 # Exportar planilha
-write.csv(soma_mun_item_contr, "compras_emergenciais.csv")
+#write.csv(soma_mun_item_contr, "compras_emergenciais.csv")
 
-write.csv(remedios, "compras_emergenciais.csv")
+#write.csv(remedios, "compras_emergenciais.csv")
 
 
-fornecedores %>%
-  select(cnpj_cpf,vl_liquidacao,cnpj_trailed,municipios_contratantes) %>%
-  write.csv("cnpjs.csv")
+#fornecedores %>%
+#  select(cnpj_cpf,vl_liquidacao,cnpj_trailed,municipios_contratantes) %>%
+#  write.csv("cnpjs.csv")
 
-exportar <- soma_mun_item_contr %>%
-  select(!c("impostos_liquidos_de_subsidi",cod_sem_ver,valor_sobre_pop,soma_vl_item_contrato_objetos,soma_qt_itens_contrato_objetos,valor_sobre_pop,obitos_sobre_hab)) %>%
-  left_join(select(soma_remedios,!c(nome_municipio)), by = c("cd_municipio_ibge"))
+# exportar <- soma_mun_item_contr %>%
+#   select(!c("impostos_liquidos_de_subsidi",cod_sem_ver,valor_sobre_pop,soma_vl_item_contrato_objetos,soma_qt_itens_contrato_objetos,valor_sobre_pop,obitos_sobre_hab)) %>%
+#   left_join(select(soma_remedios,!c(nome_municipio)), by = c("cd_municipio_ibge"))
+# 
+# #write.csv(similares_filtrado,"similares.csv")
+# 
+# soma_mun_item_contr %>%
+# summarise(total = sum(soma_vl_item_contrato))
 
-write.csv(similares_filtrado,"similares.csv")
-
-soma_mun_item_contr %>%
-summarise(total = sum(soma_vl_item_contrato))
-
-write.csv(select(fornecedores, -c(cnpj_cpf,tipo_de_registro,indicador,tipo_atualizacao,identificador_matriz_filial,situacao_cadastral,data_situacao_cadastral,motivo_situacao_cadastral,nm_cidade_exterior,cod_pais,nm_pais,qualificacao_responsavel,data_opcao_pelo_simples,data_exclusao_simples,situacao_especial,data_situacao_especial,filler,fim_registro)), "fornecedores.csv")
+#write.csv(select(fornecedores, -c(cnpj_cpf,tipo_de_registro,indicador,tipo_atualizacao,identificador_matriz_filial,situacao_cadastral,data_situacao_cadastral,motivo_situacao_cadastral,nm_cidade_exterior,cod_pais,nm_pais,qualificacao_responsavel,data_opcao_pelo_simples,data_exclusao_simples,situacao_especial,data_situacao_especial,filler,fim_registro)), "fornecedores.csv")
 
 licitacoes <- licitacoes %>%
   mutate(data_homologacao = substr(data_homologacao,1,10)) %>%
@@ -255,6 +255,15 @@ total_mes_mun <- licitacoes %>%
 
 
 ##############################################################
+
+#################
+# R program to implement 
+# Leave one out cross validation 
+
+# defining training control 
+# as Leave One Out Cross Validation 
+train_control <- caret::trainControl(method = "LOOCV") 
+
 
 
 # Importar avental
@@ -279,21 +288,29 @@ aventais2 <- aventais %>%
          bol_1_uni = if_else(qt_itens_contrato == 1, 1, 0),
          flag_pre_e_uni = if_else(bol_1_uni == 1 & price_perc > 1.5 & bol_nao_unidade == 0, 1, 0))
 
-reg_med_cor <- glm(medida_correta ~ log(palavras_perc) + log(price_perc) + bol_nao_unidade + flag_pacote + flag_pre_e_uni, data=aventais2, family=binomial)
-summary(reg_med_cor)
 
-reg_material <- glm(material_do_objeto ~ log(palavras_perc) + flag_material, data=aventais2, family=binomial)
-summary(reg_material)
+# training the model by assigning sales column 
+# as target variable and rest other column 
+# as independent varaible 
+reg_med_cor <- caret::train(medida_correta ~ log(palavras_perc) + log(price_perc) + bol_nao_unidade + flag_pacote + flag_pre_e_uni, data=aventais2,  
+                      method = "glm",
+                      family = "quasibinomial",
+                      trControl = train_control) 
 
-reg_det_ad <- glm(detalhes_adicionais ~ log(palavras_perc) + flag_detalhe_ad, data=aventais2, family=binomial)
-summary(reg_det_ad)
+reg_material <- caret::train(material_do_objeto ~ log(palavras_perc) + flag_material, data=aventais2,  
+                             method = "glm",
+                             family = "binomial",
+                             trControl = train_control) 
 
-reg_desc_alem <- glm(descricao_alem_do_objeto ~ log(palavras_perc) , data=aventais2, family=binomial)
-summary(reg_det_ad)
-
-
-aventais2 <- aventais2 %>%
-  mutate(estimativa = predict.glm(reg_med_cor, aventais2)) 
+reg_det_at <- caret::train(detalhes_adicionais ~ log(palavras_perc) + flag_detalhe_ad, data=aventais2,  
+                           method = "glm",
+                           family = "binomial",
+                           trControl = train_control) 
+  
+reg_desc_alem <- caret::train(descricao_alem_do_objeto ~ log(palavras_perc), data=aventais2,  
+                              method = "glm",
+                              family = "binomial",
+                              trControl = train_control) 
 
 
 #! Criar listas
@@ -349,15 +366,14 @@ reg_itens_analise2 <- reg_itens_analise2 %>%
 
 # Preencher com valores estimado
 reg_itens_analise2 <- reg_itens_analise2 %>%
-  mutate(estimativa_med_cor = predict.glm(reg_med_cor, reg_itens_analise2, type = "response"),
-         estimativa_material = predict.glm(reg_material, reg_itens_analise2, type = "response"),
-         estimativa_det_ad = predict.glm(reg_det_ad, reg_itens_analise2, type = "response"))
+  mutate(estimativa_med_cor = predict(reg_med_cor, reg_itens_analise2),
+         estimativa_material = predict(reg_material, reg_itens_analise2),
+         estimativa_det_ad = predict(reg_det_ad, reg_itens_analise2))
 
 reg_itens_analise2 %>%
   select(id_item_contrato,estimativa_med_cor) %>%
   left_join(select(itens_analise2,id_item_contrato,estimativa_med_cor), by = 'id_item_contrato') %>%
   View()
 
-
-
+####
 
