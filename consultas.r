@@ -13,9 +13,15 @@ sandbox <- info_contrato %>%
 length(unique(item_contrato$id_licitacao))
 
 # tabela descritiva
+# Summary
+soma_mun_item_contr %>%
+  filter(!is.na(cd_municipio_ibge)) %>%
+  select(soma_vl_item_contrato, x2019, casos_acumulado, obitos_acumulado, lic_concluidas, valor_sobre_pib, valor_sobre_pop, casos_sobre_hab, obitos_sobre_hab) %>%
+  as.data.frame() %>%
+  stargazer::stargazer(type = "html")
 
 # regressão casos dinheiro
-summary(lm(soma_vl_item_contrato ~ casos_acumulado + x2019, data=soma_mun_item_contr))
+summary(lm(soma_vl_item_contrato ~ casos_acumulado, data=soma_mun_item_contr))
 summary(lm(soma_vl_item_contrato ~ casos_sobre_hab, data=soma_mun_item_contr))
 
 # Exportar 10 maiores valores
@@ -34,7 +40,10 @@ head(arrange(fornecedores,desc(lic_concluidas)), n = 10) %>%
   kable_styling(bootstrap_options = c("striped"), position = "center")
 
 # Exportar 10 maiores fornecedores por valor
-head(arrange(fornecedores,desc(vl_liquidacao)), n = 20) %>%
+fornecedores %>%
+  filter(!is.na(razao_social)) %>%
+  arrange(desc(vl_liquidacao)) %>%
+  head(n = 20) %>%
   select(lic_concluidas,municipios_contratantes,vl_liquidacao,razao_social,data_inicio_atividade,nm_cnae) %>%
   kable(align="l", format.args = list(big.mark = ","), digits=2) %>%
   kable_styling(bootstrap_options = c("striped"), position = "center")
@@ -181,12 +190,6 @@ itens_analise2 %>%
 itens_analise %>% filter(categoria_item == "termometro") %>% nrow
 
 
-# Summary
-soma_mun_item_contr %>%
-  filter(!is.na(cd_municipio_ibge)) %>%
-  select()
-  as.data.frame() %>%
-  stargazer::stargazer(type = "html")
 
 
 # Contratos 2018 e 2019
@@ -209,11 +212,10 @@ info_contrato %>%
 # Itens_analise
 
 itens_analise2 %>%
-  filter(!categoria_item %in% c("macac","teste")) %>%
   filter(!flag_servico == 1) %>%
   group_by(categoria_item) %>%
   mutate(total_cat = n(), total_valor_cat = sum(vl_total_item_contrato)) %>%
-  filter(estimativa_med_cor < 0.4) %>%
+  filter(estimativa_med_cor < 0.36) %>%
   mutate(total_med_inc = n(),
          porc_inc = total_med_inc/total_cat,
          valor_inc = sum(vl_total_item_contrato),
