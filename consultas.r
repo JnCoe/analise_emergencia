@@ -1,10 +1,12 @@
-# Contabilizar
+pal <- RColorBrewer::brewer.pal(name = "Set2", n = 7)
+
+#Contabilizar
 
 length(unique(item_contrato$cd_municipio_ibge))
 
 length(unique(item_contrato$id_licitacao))
 
-sum(item_contrato$vl_item_contrato)
+sum(item_contrato$vl_total_item_contrato)
 
 sandbox <- info_contrato %>%
   right_join(item_contrato, by=c("id_licitacao")) %>%
@@ -114,6 +116,10 @@ head(arrange(soma_remedios,desc(soma_vl_tota_item_contrato_objetos)), n = 10) %>
   kable_styling(bootstrap_options = c("striped"), position = "center")
 
 
+
+# Reme
+
+
 # Summaries
 n_distinct(item_contrato$cd_municipio_ibge)
 n_distinct(item_contrato$id_licitacao)
@@ -211,11 +217,11 @@ info_contrato %>%
 
 # Itens_analise
 
-itens_analise2 %>%
+reg_itens_analise2 %>%
   filter(!flag_servico == 1) %>%
   group_by(categoria_item) %>%
   mutate(total_cat = n(), total_valor_cat = sum(vl_total_item_contrato)) %>%
-  filter(estimativa_med_cor < 0.36) %>%
+  filter(estimativa_med_cor < 0.4) %>%
   mutate(total_med_inc = n(),
          porc_inc = total_med_inc/total_cat,
          valor_inc = sum(vl_total_item_contrato),
@@ -227,8 +233,7 @@ itens_analise2 %>%
   kable_styling(bootstrap_options = c("striped"), position = "center")
 
   #total
-itens_analise2 %>%
-  filter(!categoria_item %in% c("macac","teste")) %>%
+reg_itens_analise2 %>%
   filter(!flag_servico == 1) %>%
   mutate(total_cat = n(), total_valor_cat = sum(vl_total_item_contrato)) %>%
   mutate(total_med_inc = n(),
@@ -241,7 +246,7 @@ itens_analise2 %>%
   kable_styling(bootstrap_options = c("striped"), position = "center")
 
   # Cidades
-itens_analise2 %>%
+reg_itens_analise2 %>%
   filter(!categoria_item %in% c("macac","teste","jaleco","alcoo")) %>%
   filter(!flag_servico == 1) %>%
   group_by(nome_municipio) %>%
@@ -271,7 +276,7 @@ itens_analise2 %>%
   write.csv("itens_mensal.csv")
 
 # Grafico compras mes
-itens_analise2 %>%
+reg_itens_analise2 %>%
   group_by(categoria_item,nivel_data2) %>%
   mutate(median_price = median(vl_item_contrato, na.rm=T),
          compras = n(),
@@ -279,16 +284,15 @@ itens_analise2 %>%
          soma_unidades = sum(qt_itens_contrato)) %>%
   select(categoria_item,nivel_data2,median_price,compras,soma_gastos,soma_unidades) %>%
   unique() %>%
-  filter(categoria_item %in% c("alcoo", "mascara", "luva", "teste") & nivel_data2>as.Date("2020-01-02") & nivel_data2<as.Date("2020-09-01")) %>%
+  filter(categoria_item %in% c("alcoo", "mascara", "luva", "teste") & nivel_data2>as.Date("2020-01-02") & nivel_data2<as.Date("2020-10-01")) %>%
   ggplot(aes(x=nivel_data2, y=compras, group=categoria_item, color=categoria_item)) +
   scale_color_manual(labels = c("Álcool", "Luva", "Máscara", "Teste"), values=pal) +
   labs(colour = "Item") + xlab("Mês") + ylab("Número de contratos") +
   scale_x_date(date_labels="%b",date_breaks  ="1 month") +
   geom_line()
 
-
-# Grafico valor medio mes
-itens_analise2 %>%
+# Grafico compras mes remedios
+remedios %>%
   group_by(categoria_item,nivel_data2) %>%
   mutate(median_price = median(vl_item_contrato, na.rm=T),
          compras = n(),
@@ -296,16 +300,101 @@ itens_analise2 %>%
          soma_unidades = sum(qt_itens_contrato)) %>%
   select(categoria_item,nivel_data2,median_price,compras,soma_gastos,soma_unidades) %>%
   unique() %>%
-  filter(categoria_item %in% c("alcoo", "mascara", "luva", "teste") & nivel_data2>as.Date("2020-01-02") & nivel_data2<as.Date("2020-09-01")) %>%
+  filter(nivel_data2>as.Date("2020-01-02") & nivel_data2<as.Date("2020-10-01")) %>%
+  ggplot(aes(x=nivel_data2, y=compras, group=categoria_item, color=categoria_item)) +
+  labs(colour = "Item") + xlab("Mês") + ylab("Número de contratos") +
+  scale_x_date(date_labels="%b",date_breaks  ="1 month") +
+  geom_line()
+
+
+
+# Grafico valor medio mes
+reg_itens_analise2 %>%
+  group_by(categoria_item,nivel_data2) %>%
+  mutate(median_price = median(vl_item_contrato, na.rm=T),
+         compras = n(),
+         soma_gastos = sum(vl_item_contrato),
+         soma_unidades = sum(qt_itens_contrato)) %>%
+  select(categoria_item,nivel_data2,median_price,compras,soma_gastos,soma_unidades) %>%
+  unique() %>%
+  filter(categoria_item %in% c("alcoo", "mascara", "luva", "teste") & nivel_data2>as.Date("2020-01-02") & nivel_data2<as.Date("2020-10-01")) %>%
   ggplot(aes(x=nivel_data2, y=median_price, group=categoria_item, color=categoria_item)) +
   scale_color_manual(labels = c("Álcool", "Luva", "Máscara", "Teste"), values=pal) +
+  labs(colour = "Item") + xlab("Mês") + ylab("Mediana do preço (escala logarítmica)") +
+  scale_x_date(date_labels="%b",date_breaks  ="1 month") +
+  scale_y_continuous(trans='log10') +
+  geom_line()
+
+
+
+# Grafico total mês
+item_contrato %>%
+  mutate(nivel_data2 = lubridate::floor_date(as.Date(stringr::str_sub(dt_inicio_vigencia, start = 1L, end = 10), tryFormats = c("%Y-%m-%d")),"month")) %>%
+  group_by(nivel_data2, nome_municipio) %>%
+  summarise(total_mun = sum(vl_total_item_contrato)) %>%
+  group_by(nivel_data2) %>%
+  summarise(media_mun = mean(total_mun),
+            total_mensal = sum(total_mun)) %>%
+  filter(nivel_data2>as.Date("2020-01-02") & nivel_data2<as.Date("2020-10-01")) %>%
+  kable(align="l", format.args = list(big.mark = ","), digits=2) %>%
+  kable_styling(bootstrap_options = c("striped"), position = "center")
+  
+  tidyr::gather(tipo, valor, media_mun:total_mensal) %>%
+  ggplot(aes(x=nivel_data2, y=valor, color=tipo)) +
+  scale_color_manual(values=pal) +
   labs(colour = "Item") + xlab("Mês") + ylab("Mediana do preço") +
   scale_x_date(date_labels="%b",date_breaks  ="1 month") +
   scale_y_continuous(labels=scales::dollar_format(prefix="R$")) +
   geom_line()
 
+item_contrato %>%
+  mutate(nivel_data2 = lubridate::floor_date(as.Date(stringr::str_sub(dt_inicio_vigencia, start = 1L, end = 10), tryFormats = c("%Y-%m-%d")),"month")) %>%
+  group_by(nivel_data2) %>%
+  summarise(median_price = median(vl_total_item_contrato, na.rm=T),
+            compras = n(),
+            soma_gastos = sum(vl_total_item_contrato),
+            n_municipio = n_distinct(cd_municipio_ibge)) %>%
+  filter(nivel_data2>as.Date("2020-01-02") & nivel_data2<as.Date("2020-10-01")) %>%
+  unique() %>%
+  tidyr::gather(tipo, valor, median_price:n_municipio) %>%
+  ggplot(aes(x=nivel_data2, y=valor, color=tipo)) +
+  scale_color_manual(values=pal) +
+  labs(colour = "Item") + xlab("Mês") + ylab("Mediana do preço") +
+  scale_x_date(date_labels="%b",date_breaks  ="1 month") +
+  scale_y_continuous(labels=scales::dollar_format(prefix="R$"), trans='log10') +
+  geom_line()
+
+# Soma Municipios 
+item_contrato %>%
+  mutate(nivel_data2 = lubridate::floor_date(as.Date(stringr::str_sub(dt_inicio_vigencia, start = 1L, end = 10), tryFormats = c("%Y-%m-%d")),"month")) %>%
+  group_by(nivel_data2) %>%
+  summarise(compras = n(),
+            n_municipio = n_distinct(cd_municipio_ibge)) %>%
+  filter(nivel_data2>as.Date("2020-01-02") & nivel_data2<as.Date("2020-10-01")) %>%
+  unique() %>%
+  kable(align="l", format.args = list(big.mark = ","), digits=2) %>%
+  kable_styling(bootstrap_options = c("striped"), position = "center")
+
+# N municipios
+item_contrato %>%
+  mutate(nivel_data2 = lubridate::floor_date(as.Date(stringr::str_sub(dt_inicio_vigencia, start = 1L, end = 10), tryFormats = c("%Y-%m-%d")),"month")) %>%
+  group_by(nivel_data2) %>%
+  summarise(compras = n(),
+            n_municipio = n_distinct(cd_municipio_ibge)) %>%
+  filter(nivel_data2>as.Date("2020-01-02") & nivel_data2<as.Date("2020-10-01")) %>%
+  unique() %>%
+  tidyr::gather(tipo, valor, compras:n_municipio) %>%
+  View()
+  ggplot(aes(x=nivel_data2, y=valor, color=tipo)) +
+  scale_color_manual(values=pal) +
+  labs(colour = "Item") + xlab("Mês") + ylab("Mediana do preço") +
+  scale_x_date(date_labels="%b",date_breaks  ="1 month") +
+  scale_y_continuous(labels=scales::dollar_format(prefix="R$"), trans='log10') +
+  geom_line()
+
+
 # material 
-itens_analise2 %>%
+reg_itens_analise2 %>%
   group_by(categoria_item) %>%
   mutate(total_cat = n(), total_valor_cat = sum(vl_total_item_contrato)) %>%
   filter(estimativa_med_cor < 0.4) %>%
@@ -320,7 +409,7 @@ itens_analise2 %>%
   kable_styling(bootstrap_options = c("striped"), position = "center")
 
 
-itens_analise2 %>%
+reg_itens_analise2 %>%
   filter(categoria_item %in% c("mascara", "luva", "aventa", "jaleco", "touca")) %>%
   group_by(categoria_item) %>%
   mutate(total_cat = n(),
@@ -334,6 +423,10 @@ itens_analise2 %>%
   kable(align="l", format.args = list(big.mark = ","), digits=2) %>%
   kable_styling(bootstrap_options = c("striped"), position = "center")
 
+reg_itens_analise2 %>%
+  filter(categoria_item %in% c("mascara", "luva", "aventa", "jaleco", "touca")) %>%
+  View()
+
 #totais materiais
 itens_analise2 %>%
   filter(categoria_item %in% c("mascara", "luva", "aventa", "jaleco", "touca")) %>%
@@ -343,3 +436,30 @@ itens_analise2 %>%
   unique %>%
   View()
   
+
+# Modalidades
+licitacoes %>%
+  filter(tipo_modalidade_licitacao == 'Pregão Presencial' | tipo_modalidade_licitacao == 'Pregão Eletrônico') %>%
+  select(id_licitacao) %>%
+  left_join(info_contrato) %>%
+  View()
+
+
+# Totais itens analisados estimativa
+reg_itens_analise2 %>%
+  select(id_item_contrato) %>%
+  unique() %>%
+  nrow()
+
+item_contrato %>%
+  select(id_item_contrato) %>%
+  unique() %>%
+  nrow()
+
+
+
+soma_mun_item_contr %>%
+  filter(!is.na(cd_municipio_ibge)) %>%
+  select(cd_municipio_ibge,soma_vl_item_contrato, x2019, casos_acumulado, obitos_acumulado, lic_concluidas, valor_sobre_pib, valor_sobre_pop, casos_sobre_hab, obitos_sobre_hab) %>%
+  as.data.frame() %>%
+  View()

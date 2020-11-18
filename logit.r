@@ -46,12 +46,12 @@ aventais2 <- aventais2 %>%
 
 # Obs.: Removi macacão, protetor, lençol, toalha, jaqueta, blusa, sapato porque havia muita variação no preço e itens muito pouco relacionados
 
-reg2_itens_analise <- item_contrato %>%
+reg3_itens_analise <- item_contrato %>%
   mutate(ds_item = tolower(iconv(ds_item, from="UTF-8", to="ASCII//TRANSLIT")))
 
 
 # Criar indicadores de mais informação
-reg2_itens_analise <- reg2_itens_analise %>%
+reg3_itens_analise <- reg2_itens_analise %>%
   mutate(flag_pacote = if_else((stringr::str_detect(ds_item, "pacote|com \\d|c/ \\d|c \\d|\\d un|unidades|und|\\d uni|c/\\d|kg| un |cx|pacote|pct|kg|und|quilo| unid ") & !stringr::str_detect(ds_item, "\\dl|\\d l|\\d ml|\\dml" )),1,0),
          flag_material = if_else(stringr::str_detect(ds_item, "tecido|latex|material|tnt|plastic|plastic|pvc|pff|acrilic|algodao|polipropileno|nitrilica|borracha|polietileno|n95|galvanizado|poliester|inox|vinil|mdf|aluminio|nylon|ferro|policarbonato|nao-tecido|nitrilica|prata|metalica|microfibra|\\(tnt\\)|acrilica"),1,0),
          flag_detalhe_ad = if_else(stringr::str_detect(ds_item, "tamanho|cor|elastico|cm|100%|branco|ambidestra|esteril|impermeavel|gramatura|mg|atoxica|preto|natural|azul|medindo|mm|branca|lubrificada|capacidade|bioabsorvivel|certificado|peso|comprimento|lei|nbr|normas|caracteristicas|costura|dimensoes|bolsos|abnt|flexivel|infantil|anvisa|sanfonada|densidade|certificacao|gramas|inmetro|antiderrapante"),1,0),
@@ -59,9 +59,9 @@ reg2_itens_analise <- reg2_itens_analise %>%
   )
 
 # Filtrar pela seleção de itens
-reg2_itens_analise <- selecao %>%
+reg3_itens_analise <- selecao %>%
   purrr::map(function(x) {
-    reg2_itens_analise %>%
+    reg3_itens_analise %>%
       mutate(selec = stringr::str_detect(ds_item, x), categoria_item = x) %>%
       filter(selec == TRUE)
   }) %>%
@@ -69,7 +69,7 @@ reg2_itens_analise <- selecao %>%
   distinct(id_item_contrato, .keep_all= TRUE)
 
 # Criar variaveis por item
-reg2_itens_analise2 <- reg2_itens_analise %>%
+reg3_itens_analise2 <- reg3_itens_analise %>%
   filter(vl_item_contrato > 0.1) %>%
   filter(!stringr::str_detect(ds_item, "lavadora de pressao|totem|totens|toten|dispenser")) %>%
   group_by(categoria_item) %>%
@@ -82,7 +82,7 @@ reg2_itens_analise2 <- reg2_itens_analise %>%
          nivel_data2 = lubridate::floor_date(as.Date(stringr::str_sub(dt_inicio_vigencia, start = 1L, end = 10), tryFormats = c("%Y-%m-%d")),"month")) %>%
   ungroup()
 
-reg2_itens_analise2 <- reg2_itens_analise2 %>%
+reg3_itens_analise2 <- reg3_itens_analise2 %>%
   group_by(categoria_item,nivel_data2) %>%
   mutate(median_price = median(vl_item_contrato, na.rm=T),
          price_perc = vl_item_contrato/median_price,
@@ -91,10 +91,29 @@ reg2_itens_analise2 <- reg2_itens_analise2 %>%
 
 
 # Preencher com valores estimado
-reg2_itens_analise2 <- reg2_itens_analise2 %>%
-  mutate(estimativa_med_cor = predict(reg2_med_cor, reg2_itens_analise2),
+reg3_itens_analise2 <- reg3_itens_analise2 %>%
+  mutate(estimativa_med_cor = predict(model, reg2_itens_analise2)),
          estimativa_material = predict(reg2_material, reg2_itens_analise2),
          estimativa_det_ad = predict(reg2_det_ad, reg2_itens_analise2))
+
+reg_itens_analise2 %>% filter(estimativa_med_cor > 0.4) %>%
+  nrow()
+
+
+reg_itens_analise2 %>%
+  filter(!flag_servico == 1) %>%
+  group_by(categoria_item) %>%
+  mutate(total_cat = n(), total_valor_cat = sum(vl_total_item_contrato)) %>%
+  filter(estimativa_med_cor < 0.4) %>%
+  mutate(total_med_inc = n(),
+         porc_inc = total_med_inc/total_cat,
+         valor_inc = sum(vl_total_item_contrato),
+         perc_valor_inc = valor_inc/total_valor_cat) %>%
+  select(categoria_item, total_med_inc, porc_inc, valor_inc, perc_valor_inc) %>%
+  unique() %>%
+  arrange(desc(valor_inc)) %>%
+  kable(align="l", format.args = list(big.mark = ","), digits=2) %>%
+  kable_styling(bootstrap_options = c("striped"), position = "center")
 
 reg2_itens_analise2 %>%
   select(id_item_contrato,id_contrato, ds_item, estimativa_med_cor, estimativa_material)
@@ -121,3 +140,25 @@ predictions <- model %>% predict(test.data)
 data.frame( R2 = R2(predictions, test.data$Fertility),
             RMSE = RMSE(predictions, test.data$Fertility),
             MAE = MAE(predictions, test.data$Fertility))
+
+
+
+
+
+#################
+# R program to implement 
+# Leave one out cross validation 
+
+# defining training control 
+# as Leave One Out Cross Validation 
+train_control <- caret::trainControl(method = "LOOCV") 
+
+# training the model by assigning sales column 
+# as target variable and rest other column 
+# as independent varaible 
+model <- caret::train(medida_correta ~ log(palavras_perc) + log(price_perc) + bol_nao_unidade + flag_pacote + flag_pre_e_uni, data=aventais2,  
+               method = "glm",
+               family = "binomial",
+               trControl = train_control) 
+
+

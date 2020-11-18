@@ -142,23 +142,48 @@ remedios <- item_contrato %>%
   filter(stringr::str_detect(ds_item, "cloroquina|ivermectina|azitromicina")) %>%
   mutate(flag_remedio = 1)
 
+lista_remedios <- c("cloroquina", "ivermectina", "azitromicina")
+
+# Criar coluna tipo remedio
+remedios <- lista_remedios %>%
+  purrr::map(function(x) {
+    remedios %>%
+      mutate(selec = stringr::str_detect(ds_item, x), categoria_item = x) %>%
+      filter(selec == TRUE)
+  }) %>%
+  bind_rows() %>%
+  distinct(id_item_contrato, .keep_all= TRUE)
+
+remedios <- remedios %>%
+  mutate(nivel_data2 = lubridate::floor_date(as.Date(stringr::str_sub(dt_inicio_vigencia, start = 1L, end = 10), tryFormats = c("%Y-%m-%d")),"month"))
+
+
+
+
+
 # Somar valores não-serviços
 soma_mun_item_contr_filtrados <- item_contrato %>%
   filter(flag_servico == 0) %>%
   group_by(cd_municipio_ibge) %>% 
-  summarise(soma_vl_item_contrato_objetos = sum(vl_item_contrato), soma_vl_item_contrato_objetos = sum(vl_item_contrato), soma_qt_itens_contrato_objetos = sum(qt_itens_contrato)) %>%
+  summarise(soma_vl_item_contrato_objetos = sum(vl_total_item_contrato), soma_qt_itens_contrato_objetos = sum(qt_itens_contrato)) %>%
   unique()
 
 # Somar valores remédios
 soma_remedios <- remedios %>%
   group_by(cd_municipio_ibge, nome_municipio) %>% 
-  summarise(soma_vl_tota_item_contrato_objetos = sum(vl_total_item_contrato), soma_qt_itens_contrato_objetos = sum(qt_itens_contrato)) %>%
+  summarise(soma_vl_tota_item_contrato_objetos = sum(vl_total_item_contrato), soma_contrato_objetos = n_distinct(id_contrato)) %>%
   unique()
+
+soma_remedios2 <- remedios %>%
+  group_by(categoria_item) %>% 
+  summarise(soma_vl_tota_item_contrato_objetos = sum(vl_total_item_contrato), soma_contrato_objetos = n_distinct(id_contrato)) %>%
+  unique()
+
 
 # Somar valores contratados todos
 soma_mun_item_contr <- item_contrato %>%
   group_by(cd_municipio_ibge) %>% 
-  summarise(soma_vl_item_contrato = sum(vl_item_contrato), soma_qt_itens_contrato = sum(qt_itens_contrato)) %>%
+  summarise(soma_vl_item_contrato = sum(vl_total_item_contrato), soma_qt_itens_contrato = sum(qt_itens_contrato)) %>%
   left_join(select(ibge,"codigo_do_municipio","nome_do_municipio","impostos_liquidos_de_subsidi","produto_interno_bruto_a_prec","produto_interno_bruto_per_cap","cod_sem_ver"), by= c("cd_municipio_ibge" = "codigo_do_municipio")) %>%
   left_join(select(pop, "cod", "x2019"), by= c("cd_municipio_ibge" = "cod")) %>%
   left_join(select(max_casos, codmun, casos_acumulado, obitos_acumulado), by= c("cod_sem_ver" = "codmun")) %>%
@@ -367,8 +392,9 @@ reg_itens_analise2 <- reg_itens_analise2 %>%
 # Preencher com valores estimado
 reg_itens_analise2 <- reg_itens_analise2 %>%
   mutate(estimativa_med_cor = predict(reg_med_cor, reg_itens_analise2),
-         estimativa_material = predict(reg_material, reg_itens_analise2),
-         estimativa_det_ad = predict(reg_det_ad, reg_itens_analise2))
+         estimativa_material = predict(reg_material, reg_itens_analise2))
+
+# Tirei det_ad porque nao estava funcionando
 
 reg_itens_analise2 %>%
   select(id_item_contrato,estimativa_med_cor) %>%
